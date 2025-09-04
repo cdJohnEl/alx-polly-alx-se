@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { createPoll } from "@/app/lib/actions/poll-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,21 +12,28 @@ export default function PollCreateForm() {
   const [success, setSuccess] = useState(false);
 
   const handleOptionChange = (idx: number, value: string) => {
-    setOptions((opts) => opts.map((opt, i) => (i === idx ? value : opt)));
+    setOptions((opts: string[]) => opts.map((opt: string, i: number) => (i === idx ? value : opt)));
   };
 
-  const addOption = () => setOptions((opts) => [...opts, ""]);
+  const addOption = () => setOptions((opts: string[]) => [...opts, ""]);
   const removeOption = (idx: number) => {
     if (options.length > 2) {
-      setOptions((opts) => opts.filter((_, i) => i !== idx));
+      setOptions((opts: string[]) => opts.filter((_: string, i: number) => i !== idx));
     }
   };
 
   return (
     <form
-      action={async (formData) => {
+      action={async (formData: FormData) => {
         setError(null);
         setSuccess(false);
+        // Attach CSRF token from cookie
+        try {
+          const csrf = document.cookie.split('; ').find((c) => c.startsWith('csrfToken='))?.split('=')[1];
+          if (csrf) {
+            formData.set('csrfToken', csrf);
+          }
+        } catch {}
         const res = await createPoll(formData);
         if (res?.error) {
           setError(res.error);
@@ -50,7 +57,7 @@ export default function PollCreateForm() {
             <Input
               name="options"
               value={opt}
-              onChange={(e) => handleOptionChange(idx, e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => handleOptionChange(idx, e.target.value)}
               required
             />
             {options.length > 2 && (

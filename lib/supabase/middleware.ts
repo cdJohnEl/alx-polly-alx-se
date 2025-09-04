@@ -14,8 +14,8 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -30,6 +30,18 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  // Ensure CSRF token cookie is present (httpOnly not supported in middleware for client read, use non-HTTPOnly)
+  const existingCsrf = request.cookies.get('csrfToken')?.value
+  if (!existingCsrf) {
+    const token = (globalThis as any).crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+    supabaseResponse.cookies.set('csrfToken', token, {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: true,
+      path: '/',
+    })
+  }
 
   if (
     !user &&
